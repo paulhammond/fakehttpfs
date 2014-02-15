@@ -2,7 +2,9 @@ package mockfs
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
+	"os"
 	"path"
 	"reflect"
 	"testing"
@@ -88,7 +90,7 @@ func TestSelf(t *testing.T) {
 		if err != nil {
 			t.Errorf("expected %s to not error, got %v", path, err)
 		}
-		if !reflect.DeepEqual(file.(mockDir), testFS.(mockDir)) {
+		if !reflect.DeepEqual(file.(*mockDir), testFS.(*mockDir)) {
 			t.Errorf("expected %s to be fs, got %v", path, file)
 		}
 	}
@@ -135,4 +137,53 @@ func TestOtherFiles(t *testing.T) {
 	if file != tmpFile {
 		t.Errorf("expecred open(%q) to be tmpfile, got %v", name, file)
 	}
+}
+
+var testDir = Dir("foo",
+	File("one", ""),
+	File("two", ""),
+	File("three", ""),
+	File("four", ""),
+	File("five", ""),
+)
+
+func TestReaddirAll(t *testing.T) {
+	fileInfos, err := testDir.Readdir(0)
+	if err != nil {
+		t.Errorf("unexpected error %v", err)
+	}
+	expected := []string{"one", "two", "three", "four", "five"}
+	if names := names(fileInfos); !reflect.DeepEqual(names, expected) {
+		t.Errorf("dir.Readdir(0) did not return all elements, expected\n%#v\ngot\n%#v", expected, names)
+	}
+}
+
+func TestReaddir(t *testing.T) {
+	tests := []struct {
+		names []string
+		err   error
+	}{
+		{[]string{"one", "two"}, nil},
+		{[]string{"three", "four"}, nil},
+		{[]string{"five"}, io.EOF},
+		{[]string{}, io.EOF},
+		{[]string{}, io.EOF},
+	}
+	for i, test := range tests {
+		fileInfos, err := testDir.Readdir(2)
+		if err != test.err {
+			t.Errorf("got error %v, expected %v", err, test.err)
+		}
+		if names := names(fileInfos); !reflect.DeepEqual(names, test.names) {
+			t.Errorf("iteration %d of dir.Readdir(2) did not return correct elements, expected\n%#v\ngot\n%#v", i+1, test.names, names)
+		}
+	}
+}
+
+func names(infos []os.FileInfo) []string {
+	names := make([]string, len(infos))
+	for i, info := range infos {
+		names[i] = info.Name()
+	}
+	return names
 }

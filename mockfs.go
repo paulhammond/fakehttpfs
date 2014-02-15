@@ -22,6 +22,7 @@ package mockfs
 import (
 	"bytes"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -30,7 +31,7 @@ import (
 
 // Creates a mock filesystem containing the files.
 func FileSystem(files ...http.File) http.FileSystem {
-	return mockDir{"", files}
+	return &mockDir{"", files, 0}
 }
 
 //  a mock file with string contents.
@@ -95,27 +96,28 @@ func (f mockFile) Sys() interface{} {
 
 // Creates a mock directory containing the files.
 func Dir(name string, files ...http.File) http.File {
-	return mockDir{name, files}
+	return &mockDir{name, files, 0}
 }
 
 type mockDir struct {
-	name  string
-	files []http.File
+	name     string
+	files    []http.File
+	position int
 }
 
-func (d mockDir) Open(name string) (http.File, error) {
+func (d *mockDir) Open(name string) (http.File, error) {
 	parts := strings.SplitN(name, "/", 2)
 	file, err := d.find(parts[0])
 	if len(parts) == 1 {
 		return file, err
 	}
-	if subDir, ok := file.(mockDir); ok {
+	if subDir, ok := file.(*mockDir); ok {
 		return subDir.Open(parts[1])
 	}
 	return nil, os.ErrNotExist
 }
 
-func (d mockDir) find(name string) (http.File, error) {
+func (d *mockDir) find(name string) (http.File, error) {
 	if name == "" || name == "." {
 		return d, nil
 	}
@@ -131,54 +133,68 @@ func (d mockDir) find(name string) (http.File, error) {
 	return nil, os.ErrNotExist
 }
 
-func (d mockDir) Stat() (os.FileInfo, error) {
+func (d *mockDir) Stat() (os.FileInfo, error) {
 	return d, nil
 }
 
-func (d mockDir) Readdir(count int) ([]os.FileInfo, error) {
-	var err error
-	r := make([]os.FileInfo, len(d.files))
-	for i, f := range d.files {
-		r[i], err = f.Stat()
-		if err != nil {
-			return r[0 : i-1], err
+func (d *mockDir) Readdir(count int) (r []os.FileInfo, err error) {
+	if count == 0 {
+		r = make([]os.FileInfo, len(d.files))
+		for i, f := range d.files {
+			r[i], err = f.Stat()
+			if err != nil {
+				return r[0 : i-1], err
+			}
+		}
+	} else {
+		r = make([]os.FileInfo, count)
+		for i := 0; i < count; i++ {
+			if d.position > len(d.files)-1 {
+				return r[0:i], io.EOF
+			}
+			r[i], err = d.files[d.position].Stat()
+			if err != nil {
+				return r[0:i], err
+			}
+			d.position++
 		}
 	}
 	return r, nil
 }
 
-func (d mockDir) Read(b []byte) (int, error) {
+func (d *mockDir) Read(b []byte) (int, error) {
 	return 0, errors.New("Not regular file")
 }
 
-func (d mockDir) Seek(offset int64, whence int) (int64, error) {
+func (d *mockDir) Seek(offset int64, whence int) (int64, error) {
 	return 0, errors.New("Not regular file")
 }
 
-func (d mockDir) Close() error {
+func (d *mockDir) Close() error {
+	d.position = 0
 	return nil
 }
 
-func (d mockDir) Name() string {
+func (d *mockDir) Name() string {
 	return d.name
 }
 
-func (d mockDir) Size() int64 {
+func (d *mockDir) Size() int64 {
 	return 0
 }
 
-func (d mockDir) Mode() os.FileMode {
+func (d *mockDir) Mode() os.FileMode {
 	panic("unimplemented")
 }
 
-func (d mockDir) ModTime() time.Time {
+func (d *mockDir) ModTime() time.Time {
 	panic("unimplemented")
 }
 
-func (d mockDir) IsDir() bool {
+func (d *mockDir) IsDir() bool {
 	return true
 }
 
-func (d mockDir) Sys() interface{} {
+func (d *mockDir) Sys() interface{} {
 	return nil
 }
