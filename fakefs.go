@@ -1,11 +1,12 @@
-// package fakehttpfs provides a fake filesystem object that implements the
+// Copyright 2014 Paul Hammond.
+// This software is licensed under the MIT license, see LICENSE.txt for details.
+
+// package fakehttpfs provides a fake filesystem that implements the
 // http.FileSystem interface.
 //
-// To use it, call the FileSystem function with one or more http.File objects.
+// To use it call the FileSystem function with one or more http.File objects.
 // The File and Dir helper functions create files and directories
-// respectively. You do not have to use the File helper, if you'd like
-// to write your own mock or stub or even use a real file you can. For
-// example:
+// respectively. For example:
 //
 //     testFS := fakehttpfs.FileSystem(
 //             fakehttpfs.File("/robots.txt", "User-agent: *\nDisallow: /"),
@@ -17,6 +18,19 @@
 //
 //     file, err := testFS.Open("/robots.txt")
 //     file, err := testFS.Open("/misc/file.txt")
+//
+// Subdirectories need to be created with the Dir helper, but you do not have
+// to use the File helper. If you'd like to write your own mock or stub or
+// even use a real file you can.
+//
+// The fake filesystem is not even slightly safe for concurrent use. By design
+// concurrent calls to Open() with the same path will return the same file
+// value (allowing you to test equality in your tests if needed). As a
+// result the values will also share the same underlying io.ReadSeeker.
+// Concurrent calls to file.Read() will give unpredictable results.
+//
+// Some methods (notably Mode and Modtime) are currently unimplemented. Adding
+// these would not be hard if needed.
 package fakehttpfs
 
 import (
