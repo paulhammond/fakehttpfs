@@ -1,23 +1,23 @@
-// package mockfs provides a mock filesystem object that implements the
+// package fakehttpfs provides a fake filesystem object that implements the
 // http.FileSystem interface.
 //
-// To use it, call the MockFileSystem function with one or more http.File
-// objects. The MockFile and Mockdir helper functions create files and
-// directories respectively. You do not have to use MockFile, if you'd like
+// To use it, call the FileSystem function with one or more http.File objects.
+// The File and Dir helper functions create files and directories
+// respectively. You do not have to use the File helper, if you'd like
 // to write your own mock or stub or even use a real file you can. For
 // example:
 //
-//     testFS := mockfs.FileSystem(
-//             mockfs.File("/robots.txt", "User-agent: *\nDisallow: /"),
-//             mockfs.Dir("/misc",
-//                     mockfs.File("hello.txt", "Hello")
+//     testFS := fakehttpfs.FileSystem(
+//             fakehttpfs.File("/robots.txt", "User-agent: *\nDisallow: /"),
+//             fakehttpfs.Dir("/misc",
+//                     fakehttpfs.File("hello.txt", "Hello")
 //                     os.Open("/path/to/some/real/file.txt")
 //             )
 //     );
 //
 //     file, err := testFS.Open("/robots.txt")
 //     file, err := testFS.Open("/misc/file.txt")
-package mockfs
+package fakehttpfs
 
 import (
 	"bytes"
@@ -29,40 +29,40 @@ import (
 	"time"
 )
 
-// Creates a mock filesystem containing the files.
+// Creates a test fake filesystem containing the files.
 func FileSystem(files ...http.File) http.FileSystem {
-	return &mockDir{"", files, 0}
+	return &dir{"", files, 0}
 }
 
-//  a mock file with string contents.
+//  a test fake file with string contents.
 func File(name, contents string) http.File {
 	b := []byte(contents)
-	return mockFile{name, int64(len(b)), bytes.NewReader(b)}
+	return file{name, int64(len(b)), bytes.NewReader(b)}
 }
 
-type mockFile struct {
+type file struct {
 	name string
 	size int64
 	*bytes.Reader
 }
 
-func (f mockFile) Stat() (os.FileInfo, error) {
+func (f file) Stat() (os.FileInfo, error) {
 	return f, nil
 }
 
-func (f mockFile) Readdir(int) ([]os.FileInfo, error) {
+func (f file) Readdir(int) ([]os.FileInfo, error) {
 	return nil, errors.New("Not dir")
 }
 
-func (f mockFile) Read(b []byte) (int, error) {
+func (f file) Read(b []byte) (int, error) {
 	return f.Reader.Read(b)
 }
 
-func (f mockFile) Seek(offset int64, whence int) (int64, error) {
+func (f file) Seek(offset int64, whence int) (int64, error) {
 	return f.Reader.Seek(offset, whence)
 }
 
-func (f mockFile) Close() error {
+func (f file) Close() error {
 	_, err := f.Seek(0, 0)
 	if err != nil {
 		panic(err)
@@ -70,54 +70,54 @@ func (f mockFile) Close() error {
 	return nil
 }
 
-func (f mockFile) Name() string {
+func (f file) Name() string {
 	return f.name
 }
 
-func (f mockFile) Size() int64 {
+func (f file) Size() int64 {
 	return int64(f.Reader.Len())
 }
 
-func (f mockFile) Mode() os.FileMode {
+func (f file) Mode() os.FileMode {
 	panic("unimplemented")
 }
 
-func (f mockFile) ModTime() time.Time {
+func (f file) ModTime() time.Time {
 	panic("unimplemented")
 }
 
-func (f mockFile) IsDir() bool {
+func (f file) IsDir() bool {
 	return false
 }
 
-func (f mockFile) Sys() interface{} {
+func (f file) Sys() interface{} {
 	return nil
 }
 
-// Creates a mock directory containing the files.
+// Creates a test fake directory containing the files.
 func Dir(name string, files ...http.File) http.File {
-	return &mockDir{name, files, 0}
+	return &dir{name, files, 0}
 }
 
-type mockDir struct {
+type dir struct {
 	name     string
 	files    []http.File
 	position int
 }
 
-func (d *mockDir) Open(name string) (http.File, error) {
+func (d *dir) Open(name string) (http.File, error) {
 	parts := strings.SplitN(name, "/", 2)
 	file, err := d.find(parts[0])
 	if len(parts) == 1 {
 		return file, err
 	}
-	if subDir, ok := file.(*mockDir); ok {
+	if subDir, ok := file.(*dir); ok {
 		return subDir.Open(parts[1])
 	}
 	return nil, os.ErrNotExist
 }
 
-func (d *mockDir) find(name string) (http.File, error) {
+func (d *dir) find(name string) (http.File, error) {
 	if name == "" || name == "." {
 		return d, nil
 	}
@@ -133,11 +133,11 @@ func (d *mockDir) find(name string) (http.File, error) {
 	return nil, os.ErrNotExist
 }
 
-func (d *mockDir) Stat() (os.FileInfo, error) {
+func (d *dir) Stat() (os.FileInfo, error) {
 	return d, nil
 }
 
-func (d *mockDir) Readdir(count int) (r []os.FileInfo, err error) {
+func (d *dir) Readdir(count int) (r []os.FileInfo, err error) {
 	if count == 0 {
 		r = make([]os.FileInfo, len(d.files))
 		for i, f := range d.files {
@@ -162,39 +162,39 @@ func (d *mockDir) Readdir(count int) (r []os.FileInfo, err error) {
 	return r, nil
 }
 
-func (d *mockDir) Read(b []byte) (int, error) {
+func (d *dir) Read(b []byte) (int, error) {
 	return 0, errors.New("Not regular file")
 }
 
-func (d *mockDir) Seek(offset int64, whence int) (int64, error) {
+func (d *dir) Seek(offset int64, whence int) (int64, error) {
 	return 0, errors.New("Not regular file")
 }
 
-func (d *mockDir) Close() error {
+func (d *dir) Close() error {
 	d.position = 0
 	return nil
 }
 
-func (d *mockDir) Name() string {
+func (d *dir) Name() string {
 	return d.name
 }
 
-func (d *mockDir) Size() int64 {
+func (d *dir) Size() int64 {
 	return 0
 }
 
-func (d *mockDir) Mode() os.FileMode {
+func (d *dir) Mode() os.FileMode {
 	panic("unimplemented")
 }
 
-func (d *mockDir) ModTime() time.Time {
+func (d *dir) ModTime() time.Time {
 	panic("unimplemented")
 }
 
-func (d *mockDir) IsDir() bool {
+func (d *dir) IsDir() bool {
 	return true
 }
 
-func (d *mockDir) Sys() interface{} {
+func (d *dir) Sys() interface{} {
 	return nil
 }

@@ -1,4 +1,4 @@
-package mockfs
+package fakehttpfs
 
 import (
 	"bytes"
@@ -90,7 +90,7 @@ func TestSelf(t *testing.T) {
 		if err != nil {
 			t.Errorf("expected %s to not error, got %v", path, err)
 		}
-		if !reflect.DeepEqual(file.(*mockDir), testFS.(*mockDir)) {
+		if !reflect.DeepEqual(file.(*dir), testFS.(*dir)) {
 			t.Errorf("expected %s to be fs, got %v", path, file)
 		}
 	}
@@ -122,7 +122,7 @@ func TestErrors(t *testing.T) {
 }
 
 func TestOtherFiles(t *testing.T) {
-	tmpFile, err := ioutil.TempFile("", "mockfs")
+	tmpFile, err := ioutil.TempFile("", "fakehttpfs")
 	name := path.Base(tmpFile.Name())
 	if err != nil {
 		panic(err)
