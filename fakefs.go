@@ -29,8 +29,8 @@
 // result the values will also share the same underlying io.ReadSeeker.
 // Concurrent calls to file.Read() will give unpredictable results.
 //
-// Some methods (notably Mode and Modtime) are currently unimplemented. Adding
-// these would not be hard if needed.
+// Some methods (notably Modtime) are currently unimplemented. Adding these
+// would not be hard if needed.
 package fakehttpfs
 
 import (
@@ -93,7 +93,7 @@ func (f file) Size() int64 {
 }
 
 func (f file) Mode() os.FileMode {
-	panic("unimplemented")
+	return 0644
 }
 
 func (f file) ModTime() time.Time {
@@ -198,7 +198,7 @@ func (d *dir) Size() int64 {
 }
 
 func (d *dir) Mode() os.FileMode {
-	panic("unimplemented")
+	return 0755 | os.ModeDir
 }
 
 func (d *dir) ModTime() time.Time {
