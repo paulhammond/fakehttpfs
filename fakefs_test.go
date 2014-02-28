@@ -11,11 +11,13 @@ import (
 	"path"
 	"reflect"
 	"testing"
+	"time"
 )
 
+var now = time.Now()
 var testFS = FileSystem(
 	Dir("foo",
-		File("bar", "BAR"),
+		File("bar", "BAR", now),
 		Dir("baz",
 			Dir("baz",
 				Dir("baz",
@@ -32,8 +34,9 @@ func TestFilesystem(t *testing.T) {
 	fileTests := []struct {
 		path     string
 		contents string
+		modTime  time.Time
 	}{
-		{path: "foo/bar", contents: "BAR"},
+		{path: "foo/bar", contents: "BAR", modTime: now},
 		{path: "foo/baz/baz/baz/baz", contents: "BAZ"},
 		{path: "hello", contents: "hello"},
 		{path: "/hello", contents: "hello"},
@@ -54,6 +57,14 @@ func TestFilesystem(t *testing.T) {
 			file.Close()
 			if s := b.String(); s != test.contents {
 				t.Errorf("expected %s to contain %q, got %q", test.path, test.contents, s)
+			}
+			stat, err := file.Stat()
+			if err != nil {
+				t.Fatalf("expected stat to not error, got %v", err)
+			}
+			if mt := stat.ModTime(); mt != test.modTime {
+				t.Errorf("expected %s modtime to be %v, got %v", test.path, test.modTime, mt)
+
 			}
 		}
 	}

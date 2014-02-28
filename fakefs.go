@@ -28,14 +28,12 @@
 // value (allowing you to test equality in your tests if needed). As a
 // result the values will also share the same underlying io.ReadSeeker.
 // Concurrent calls to file.Read() will give unpredictable results.
-//
-// Some methods (notably Modtime) are currently unimplemented. Adding these
-// would not be hard if needed.
 package fakehttpfs
 
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -49,14 +47,25 @@ func FileSystem(files ...http.File) http.FileSystem {
 }
 
 //  a test fake file with string contents.
-func File(name, contents string) http.File {
+func File(name, contents string, options ...interface{}) http.File {
 	b := []byte(contents)
-	return file{name, int64(len(b)), bytes.NewReader(b)}
+	f := file{name: name, size: int64(len(b)), Reader: bytes.NewReader(b)}
+
+	for _, o := range options {
+		switch t := o.(type) {
+		case time.Time:
+			f.modTime = t
+		default:
+			panic(fmt.Sprintf("Unknown option type %T", t))
+		}
+	}
+	return f
 }
 
 type file struct {
-	name string
-	size int64
+	name    string
+	size    int64
+	modTime time.Time
 	*bytes.Reader
 }
 
@@ -97,7 +106,7 @@ func (f file) Mode() os.FileMode {
 }
 
 func (f file) ModTime() time.Time {
-	panic("unimplemented")
+	return f.modTime
 }
 
 func (f file) IsDir() bool {
