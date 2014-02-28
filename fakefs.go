@@ -157,7 +157,7 @@ func (d *dir) Readdir(count int) (r []os.FileInfo, err error) {
 		for i, f := range d.files {
 			r[i], err = f.Stat()
 			if err != nil {
-				return r[0 : i-1], err
+				return r[0:i], err
 			}
 		}
 	} else {
