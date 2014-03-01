@@ -17,7 +17,7 @@ import (
 var now = time.Now()
 var testFS = FileSystem(
 	Dir("foo",
-		File("bar", "BAR", now),
+		File("bar", "BAR", now, os.FileMode(0777)),
 		Dir("baz",
 			Dir("baz",
 				Dir("baz",
@@ -35,13 +35,14 @@ func TestFilesystem(t *testing.T) {
 		path     string
 		contents string
 		modTime  time.Time
+		mode     os.FileMode
 	}{
-		{path: "foo/bar", contents: "BAR", modTime: now},
-		{path: "foo/baz/baz/baz/baz", contents: "BAZ"},
-		{path: "hello", contents: "hello"},
-		{path: "/hello", contents: "hello"},
-		{path: "./hello", contents: "hello"},
-		{path: ".//hello", contents: "hello"},
+		{path: "foo/bar", contents: "BAR", modTime: now, mode: 0777},
+		{path: "foo/baz/baz/baz/baz", contents: "BAZ", mode: 0644},
+		{path: "hello", contents: "hello", mode: 0644},
+		{path: "/hello", contents: "hello", mode: 0644},
+		{path: "./hello", contents: "hello", mode: 0644},
+		{path: ".//hello", contents: "hello", mode: 0644},
 	}
 
 	for _, test := range fileTests {
@@ -64,7 +65,9 @@ func TestFilesystem(t *testing.T) {
 			}
 			if mt := stat.ModTime(); mt != test.modTime {
 				t.Errorf("expected %s modtime to be %v, got %v", test.path, test.modTime, mt)
-
+			}
+			if m := stat.Mode(); m != test.mode {
+				t.Errorf("expected %s modtime to be %v, got %v", test.path, test.mode, m)
 			}
 		}
 	}

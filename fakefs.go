@@ -49,12 +49,14 @@ func FileSystem(files ...http.File) http.FileSystem {
 //  a test fake file with string contents.
 func File(name, contents string, options ...interface{}) http.File {
 	b := []byte(contents)
-	f := file{name: name, size: int64(len(b)), Reader: bytes.NewReader(b)}
+	f := file{name: name, mode: 0644, size: int64(len(b)), Reader: bytes.NewReader(b)}
 
 	for _, o := range options {
 		switch t := o.(type) {
 		case time.Time:
 			f.modTime = t
+		case os.FileMode:
+			f.mode = t
 		default:
 			panic(fmt.Sprintf("Unknown option type %T", t))
 		}
@@ -65,6 +67,7 @@ func File(name, contents string, options ...interface{}) http.File {
 type file struct {
 	name    string
 	size    int64
+	mode    os.FileMode
 	modTime time.Time
 	*bytes.Reader
 }
@@ -102,7 +105,7 @@ func (f file) Size() int64 {
 }
 
 func (f file) Mode() os.FileMode {
-	return 0644
+	return f.mode
 }
 
 func (f file) ModTime() time.Time {
