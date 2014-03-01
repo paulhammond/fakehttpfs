@@ -11,7 +11,7 @@
 //     testFS := fakehttpfs.FileSystem(
 //             fakehttpfs.File("/robots.txt", "User-agent: *\nDisallow: /"),
 //             fakehttpfs.Dir("/misc",
-//                     fakehttpfs.File("hello.txt", "Hello")
+//                     fakehttpfs.File("hello.txt", "Hello", os.FileMode(0600))
 //                     os.Open("/path/to/some/real/file.txt")
 //             )
 //     );
@@ -46,7 +46,10 @@ func FileSystem(files ...http.File) http.FileSystem {
 	return &dir{"", files, 0}
 }
 
-//  a test fake file with string contents.
+// Creates a test fake file with string contents. If options includes a
+// time.Time it is used to specify the file modification time, if not the zero
+// time is used. Likewise, if options includes an os.FileMode it is used to
+// specify the file mode, if not 0644 is used.
 func File(name, contents string, options ...interface{}) http.File {
 	b := []byte(contents)
 	f := file{name: name, mode: 0644, size: int64(len(b)), Reader: bytes.NewReader(b)}
